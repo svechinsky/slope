@@ -1,9 +1,9 @@
 extern crate ring;
 extern crate untrusted;
 extern crate data_encoding;
-extern crate time;
 
-use self::ring::{signature, rand};
+
+use self::ring::signature;
 use super::Transaction;
 use self::data_encoding::HEXLOWER;
 use std::str;
@@ -81,15 +81,18 @@ impl SimpleTransaction {
 
 #[cfg(test)]
 mod tests {
+    extern crate time;
+
     use super::*;
-    
+    use self::ring::rand;
+
     #[test]
     fn generate_and_validate_simple_transaction() {
         let rng = rand::SystemRandom::new();
         let pkcs8_bytes = signature::Ed25519KeyPair::generate_pkcs8(&rng).unwrap();
+        let now = time::precise_time_ns();
         
-        
-        let transaction = SimpleTransaction::generate(777, 1, b"0x1fsaefse".to_vec(), pkcs8_bytes.to_vec());
+        let transaction = SimpleTransaction::generate(777, now, b"0x1fsaefse".to_vec(), pkcs8_bytes.to_vec());
         println!("Transaction {}", transaction.serialize());
         assert!(transaction.validate_sender())
     }

@@ -1,4 +1,4 @@
-use ::transaction::Transaction;
+use transaction::Transaction;
 pub mod simple_state;
 
 pub trait State<K, S, T: Transaction>{
