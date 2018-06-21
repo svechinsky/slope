@@ -1,0 +1,9 @@
+name: Slope
+version: "0.1.0"
+author: Yoni Svechinsky <svechinskyy@gmail.com>
+about: Slope is a node that runs an implementation of Avalanche 
+subcommands:
+    - start:
+        about: Starts a slope node with default features
+        version: "0.1.0"
+        

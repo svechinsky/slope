@@ -1,6 +1,9 @@
+use transaction::Transaction;
 use transaction::simple_transaction::SimpleTransaction;
 
-struct SimpleVertex<T: Transaction>{
-  transaction: T;
-  parent_transactions: T;
+pub struct SimpleVertex<T: Transaction>{
+  transaction: T,
+  parent_transactions: Vec<T>,
+  chit: u8,
+  confidence: u64
 }

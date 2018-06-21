@@ -1,9 +1,15 @@
+#[macro_use]
+extern crate clap;
+
+mod conflict_set;
 mod state;
 mod transaction;
-
-use state::simple_state::SimpleState;
+mod vertex;
 
 fn main() {
-    let state:SimpleState = SimpleState::new();
-    println!("Hello, world!");
+    let yaml = load_yaml!("cli.yml");
+    let matches = clap::App::from_yaml(yaml).get_matches();
+    if let Some(_start) = matches.subcommand_matches("start") {
+        println!("No node to start yet :(");
+    }
 }
