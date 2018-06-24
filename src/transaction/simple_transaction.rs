@@ -2,15 +2,21 @@ extern crate data_encoding;
 extern crate ring;
 extern crate untrusted;
 
+extern crate serde;
+extern crate serde_json;
+
 use self::data_encoding::HEXLOWER;
 use self::ring::signature;
 use super::Transaction;
-use std::str;
+use super::error::TransactionError;
 
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SimpleTransaction {
     pub value: u64,
     pub timestamp: u64,
+    #[serde(with = "address")]
     pub to: Vec<u8>,
+    #[serde(with = "address")]
     pub from: Vec<u8>,
     pub signature: Vec<u8>,
 }
@@ -41,38 +47,17 @@ impl Transaction for SimpleTransaction {
         }
     }
     fn serialize(&self) -> String {
-        let message = self.get_message();
-        return format!(
-            "{},{}",
-            message,
-            &HEXLOWER.encode(self.signature.as_slice())
-        );
+        return serde_json::to_string(&self).unwrap();
     }
 
-    fn deserialize(transaction_message: String) -> SimpleTransaction {
-        let split: Vec<&str> = transaction_message.split(',').collect();
-        return SimpleTransaction {
-            value: split[0].parse::<u64>().unwrap(),
-            timestamp: split[1].parse::<u64>().unwrap(),
-            to: HEXLOWER
-                .decode(split[2].as_bytes())
-                .unwrap()
-                .iter()
-                .cloned()
-                .collect(),
-            from: HEXLOWER
-                .decode(split[3].as_bytes())
-                .unwrap()
-                .iter()
-                .cloned()
-                .collect(),
-            signature: HEXLOWER
-                .decode(split[4].as_bytes())
-                .unwrap()
-                .iter()
-                .cloned()
-                .collect(),
-        };
+    fn deserialize(transaction_message: String) -> Result<SimpleTransaction, TransactionError> {
+        let transaction: SimpleTransaction =
+            serde_json::from_str(transaction_message.as_ref()).unwrap();
+        if transaction.validate_sender() {
+            return Ok(transaction);
+        } else {
+            return Err(TransactionError::InvalidSigner);
+        }
     }
 
     fn generate((value, timestamp, to, key_doc): Self::GenerateTuple) -> Self {
@@ -98,6 +83,31 @@ impl Transaction for SimpleTransaction {
     }
 }
 
+mod address {
+    use super::serde::{Deserialize, Deserializer, Serializer};
+    use super::HEXLOWER;
+
+    pub fn serialize<S>(address: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let s = format!("{}", &HEXLOWER.encode(address.as_slice()));
+        serializer.serialize_str(&s)
+    }
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        return Ok(HEXLOWER
+            .decode(s.as_bytes())
+            .unwrap()
+            .iter()
+            .cloned()
+            .collect());
+    }
+}
+
 #[cfg(test)]
 mod tests {
     extern crate time;
@@ -113,7 +123,11 @@ mod tests {
 
         let transaction =
             SimpleTransaction::generate((777, now, b"0x1fsaefse".to_vec(), pkcs8_bytes.to_vec()));
-        println!("Transaction {}", transaction.serialize());
-        assert!(transaction.validate_sender())
+
+        let serialized = transaction.serialize();
+        let deserialized: SimpleTransaction = serde_json::from_str(&serialized).unwrap();
+
+        println!("Transaction {}", serialized);
+        assert!(deserialized.validate_sender())
     }
 }
